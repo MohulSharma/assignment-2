@@ -1,71 +1,126 @@
 #include <stdio.h>
-#include <conio.h>
 #include <windows.h>
 #include <stdlib.h>
 #include <time.h>
+#include <mmsystem.h>
+
+#pragma comment(lib, "winmm.lib")
+
+int loadHighScore() {
+    FILE *file = fopen("highscore.txt", "r");
+    if (!file) return 0;
+
+    int hs = 0;
+    fscanf(file, "%d", &hs);
+    fclose(file);
+    return hs;
+}
+
+void saveHighScore(int score) {
+    FILE *file = fopen("highscore.txt", "w");
+    if (!file) return;
+
+    fprintf(file, "%d", score);
+    fclose(file);
+}
 
 int main() {
     srand(time(0));
 
-    int x = 1;              // player position (0 to 2)
-    int step = 0;           // obstacle vertical movement
-    int obstaclePos = rand() % 3;   // 0,1,2 lane
+    // Play background music (looping)
+    PlaySound("background.wav", NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
+
+    int x = 1;
+    int step = 0;
+    int obstaclePos = rand() % 3;
+    int frameCounter = 0;
+    int score = 0;
+    int highScore = loadHighScore();
 
     while (1) {
-        // ---- INPUT ----
-        if (_kbhit()) {
-            char ch = getch();
 
-            if (ch == 75 && x > 0)        // LEFT arrow
-                x++;
+        // INPUT
+        for (int i = 0; i < 3; i++) {
+            if (GetAsyncKeyState(VK_LEFT) & 0x8000) {
+                if (x > 0) {
+                    x--;
+                    Beep(600, 40);  // movement sound
+                    Sleep(50);
+                    while (GetAsyncKeyState(VK_LEFT) & 0x8000) Sleep(10);
+                }
+            }
 
-            if (ch == 77 && x < 2)        // RIGHT arrow
-                x++;
+            if (GetAsyncKeyState(VK_RIGHT) & 0x8000) {
+                if (x < 2) {
+                    x++;
+                    Beep(600, 40);  // movement sound
+                    Sleep(50);
+                    while (GetAsyncKeyState(VK_RIGHT) & 0x8000) Sleep(10);
+                }
+            }
+            Sleep(10);
         }
 
-        // ---- DRAW ----
+        // CLEAR SCREEN
         system("cls");
-        printf("|--- --- ---|\n");
 
-        for (int i = 0; i < 10; i++) {
+        printf("Use LEFT/RIGHT to move | Score: %d | High Score: %d\n", score, highScore);
+
+        for (int i = 0; i < 9; i++) {
             if (i == step) {
-
-                if (obstaclePos == 0)
-                    printf("| %c        |\n", 1);
-
-                else if (obstaclePos == 1)
-                    printf("|     %c    |\n", 1);
-
-                else if (obstaclePos == 2)
-                    printf("|        %c |\n", 1);
-
+                if (obstaclePos == 0) printf("| X        |\n");
+                else if (obstaclePos == 1) printf("|     X    |\n");
+                else printf("|        X |\n");
             } else {
-                printf("|           |\n");
+                printf("|          |\n");
             }
         }
 
-        // ---- PLAYER ----
-        if (x == 0)
-            printf("| %c        |\n", 6);
-        else if (x == 1)
-            printf("|     %c    |\n", 6);
-        else if (x == 2)
-            printf("|        %c |\n", 6);
+        // PLAYER
+        if (x == 0) printf("| O        |\n");
+        else if (x == 1) printf("|     O    |\n");
+        else printf("|        O |\n");
 
-        // ---- COLLISION ----
-        if (step == 10 && x == obstaclePos) {
-            printf("\nGAME OVER!\n");
+        // COLLISION
+        if (step == 8 && x == obstaclePos) {
+            Beep(200, 300);   // collision sound
+            Beep(150, 200);
+
+            printf("\nGAME OVER!!! Final Score: %d\n", score);
+
+            // HIGH SCORE UPDATE
+            if (score > highScore) {
+                printf("NEW HIGH SCORE!\n");
+                saveHighScore(score);
+            }
+
+            Sleep(2500);
             break;
         }
 
-        Sleep(120);
+        Sleep(60);
+        frameCounter++;
 
-        // Move obstacle down
-        step++;
+        if (frameCounter >= 2) {
+            step++;
+            frameCounter = 0;
+        }
 
-        // Reset when reaches bottom
-        if (step > 10) {
+        // Reach bottom
+        if (step > 8) {
             step = 0;
+            obstaclePos = rand() % 3;
+            score++;
+
+            Beep(900, 100);  // score-up sound
+        }
+    }
+
+    // Stop background audio
+    PlaySound(NULL, 0, 0);
+
+    return 0;
+}            step = 0;
             obstaclePos = rand() % 3; // new lane
         }
     }
